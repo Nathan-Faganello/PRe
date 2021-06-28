@@ -1,0 +1,3 @@
+width: 150cm
+Depth: 75cm
+Height: 75cm

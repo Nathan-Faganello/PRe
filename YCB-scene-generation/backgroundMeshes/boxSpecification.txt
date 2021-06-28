@@ -1,0 +1,3 @@
+Width and depth: 20cm or 25cm or 30cm
+Height: 10cm or 15cm or 20cm
+thickness: 1cm
