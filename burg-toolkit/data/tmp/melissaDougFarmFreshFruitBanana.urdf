@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="melissaDougFarmFreshFruitBanana">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="melissaDougFarmFreshFruitBanana.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="melissaDougFarmFreshFruitBanana.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.066"/>
+			<inertia ixx="0.0001439650897887306" ixy="-4.2512324404179635e-05" ixz="1.0073658587966513e-06" iyy="2.9710749080611398e-05" iyz="-8.605406194371425e-07" izz="0.00016382882031554385" />
+			<origin xyz="-0.02142973337006885 0.011412677310055061 -0.000830980529059617"/>
+		</inertial>
+	</link>
+</robot>

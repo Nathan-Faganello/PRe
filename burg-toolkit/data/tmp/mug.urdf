@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="mug">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="mug.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="mug.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.118"/>
+			<inertia ixx="0.0001004803651206172" ixy="5.640251368416602e-07" ixz="-2.7059098071706033e-06" iyy="0.00011367603608816929" iyz="-2.4887595710328863e-06" izz="0.0001463811316906488" />
+			<origin xyz="-0.010128402558423318 -0.0007865248130958034 -0.013434588910446747"/>
+		</inertial>
+	</link>
+</robot>

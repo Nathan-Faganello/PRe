@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="softball">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="softball.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="softball.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.191"/>
+			<inertia ixx="0.00017593134466897041" ixy="1.4104596610760486e-07" ixz="-5.382925245955237e-08" iyy="0.00017492581286831013" iyz="1.2802776026180832e-07" izz="0.00017657708812460245" />
+			<origin xyz="2.1804038985638018e-05 0.00017643585094514477 -0.0001559214228773825"/>
+		</inertial>
+	</link>
+</robot>

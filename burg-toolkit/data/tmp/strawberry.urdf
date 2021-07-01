@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="strawberry">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="strawberry.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="strawberry.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.018"/>
+			<inertia ixx="3.728400741087679e-06" ixy="-3.6367708086410197e-07" ixz="-9.753492752734992e-09" iyy="3.804326594830449e-06" iyz="-1.1143120374466581e-07" izz="3.7586311691740947e-06" />
+			<origin xyz="-0.0006304970118166897 -0.0003460376131025324 -0.0015038721786667369"/>
+		</inertial>
+	</link>
+</robot>

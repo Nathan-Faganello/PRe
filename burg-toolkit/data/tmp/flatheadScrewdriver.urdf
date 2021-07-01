@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="flatheadScrewdriver">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="flatheadScrewdriver.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="flatheadScrewdriver.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.0984"/>
+			<inertia ixx="6.998011534930455e-05" ixy="6.104526992632144e-05" ixz="-3.372681780635787e-06" iyy="7.450760754197991e-05" iyz="3.262747668945785e-06" izz="0.00013317393463979437" />
+			<origin xyz="0.035839968696152434 -0.034482678542974 -0.0009290463019039919"/>
+		</inertial>
+	</link>
+</robot>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="jellOChocolateFlavorPudding">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="jellOChocolateFlavorPudding.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="jellOChocolateFlavorPudding.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.005"/>
+			<inertia ixx="4.050041013530916e-06" ixy="-7.337853431604745e-07" ixz="-9.749366260376737e-08" iyy="5.051667122460292e-06" iyz="-3.0441850101476566e-08" izz="8.054038929819078e-06" />
+			<origin xyz="0.0010104309075403609 -0.0003153657646764152 -0.00030219982758505833"/>
+		</inertial>
+	</link>
+</robot>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="sponge">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="sponge.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="sponge.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.0062"/>
+			<inertia ixx="5.46638744565462e-06" ixy="-2.9755468096001948e-08" ixz="-3.759687446780247e-08" iyy="2.6929589529389462e-06" iyz="-5.342555045290627e-08" izz="7.906318010571705e-06" />
+			<origin xyz="-0.0004932996838707175 -0.002243342696425425 -0.0002437015085486139"/>
+		</inertial>
+	</link>
+</robot>

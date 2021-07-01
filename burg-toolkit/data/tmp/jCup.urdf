@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="jCup">
+	<link name="base">
+		<collision>
+			<geometry>
+				<mesh filename="jCup.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="jCup.obj"/>
+			</geometry>
+			<origin xyz="0 0 0"/>
+		</visual>
+		<inertial>
+			<mass value="0.038"/>
+			<inertia ixx="5.5607422881569746e-05" ixy="-9.701408838425732e-08" ixz="2.8520123143322215e-07" iyy="5.628913783339282e-05" iyz="2.8613216600285953e-07" izz="6.510695840239867e-05" />
+			<origin xyz="0.0005845688132926551 0.0004141255584700271 -0.0006025270166255087"/>
+		</inertial>
+	</link>
+</robot>
