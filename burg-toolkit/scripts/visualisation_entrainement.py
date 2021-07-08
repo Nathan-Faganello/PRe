@@ -58,14 +58,18 @@ obj_pose4 = np.array([
             [ 0, 0, 0 , 1]])
 objectInst4 = burg.scene.ObjectInstance(objectType4, pose = obj_pose4)
 
+plane = burg.visualization.create_plane(1.5,1,0.01)
+planeType = burg.scene.ObjectType(mesh = plane)
+planeInst = burg.scene.ObjectInstance(planeType)
+
 
 #burg.visualization.show_o3d_point_clouds(mesh, colorize=False)
 
 #generate_dataset.preprocess_shapes(cfg['General'], ['table','bowl', 'softball', 'pear'])
 
-objects_bg = [objectInst1]
+objects_bg = [objectInst1, planeInst]
 objects_scene = [objectInst2, objectInst3, objectInst4]
 
 sc = burg.scene.Scene(objects = objects_scene, bg_objects = objects_bg)
 
-burg.visualization.show_scene(sc, with_bg_objs = True, add_plane = True)
+burg.visualization.show_scene(sc, with_bg_objs = True, add_plane = False)

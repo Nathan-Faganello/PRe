@@ -447,6 +447,7 @@ class SingleObjectGraspSimulator(GraspSimulatorBase):
                 # monday-me will have to figure this out
 
 
+########################################################################################################################################################################
 
 class SceneGraspSimulator(GraspSimulatorBase):
     """

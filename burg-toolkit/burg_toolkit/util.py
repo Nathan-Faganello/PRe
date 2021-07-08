@@ -334,6 +334,7 @@ def tf_from_xyz_pos(x_axis, y_axis, z_axis, position=None):
 
 def position_and_quaternion_from_tf(tf, convention='wxyz'):
     """
+    
     Function to compute position and rotation from a 4x4 transformation matrix.
 
     :param tf: (4, 4) homogenous transformation matrix
