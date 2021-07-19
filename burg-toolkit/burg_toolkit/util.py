@@ -367,3 +367,65 @@ def o3d_mesh_to_trimesh(o3d_mesh):
                              vertex_normals=np.asarray(o3d_mesh.vertex_normals),
                              triangle_normals=np.asarray(o3d_mesh.triangle_normals))
     return t_mesh
+
+
+def tf_rotation_from_angle(angle, axis):
+    """
+    Create a transformation matrix for a rotation
+    :angle (real) = angle of the rotation
+    :axis (char) = rotation axis (x, y ,z)
+
+    :return (4,4) transformation matrix
+    """
+
+    tf = np.eye(4)
+    cos, sin = np.cos(angle), np.sin(angle)
+
+    if axis == "x" :
+        tf[1,1]=cos
+        tf[1,2]=-sin
+        tf[2,1]=sin
+        tf[2,2]=cos
+
+    elif axis == "y":
+        tf[0,0]=cos
+        tf[0,2]=sin
+        tf[2,0]=-sin
+        tf[2,2]=cos
+
+    elif axis == "z":
+        tf[0,0]=cos
+        tf[0,1]=-sin
+        tf[1,0]=sin
+        tf[1,1]=cos
+
+    else :
+        print("the axis input is not correct")
+
+    return tf
+
+def tf_translation(distance, axis):
+    """
+    Create a transformation matrix for a translation
+    :distance (real) = distance of the translation
+    :axis (char) = translation axis (x, y ,z)
+
+    :return (4,4) transformation matrix
+    """
+
+    tf = np.eye(4)
+
+    if axis == "x" :
+        tf[0,3] = distance
+
+    elif axis == "y":
+        tf[1,3] = distance
+
+    elif axis == "z":
+        tf[3,3] = distance
+
+    else :
+        print("the axis input is not correct")
+
+    return tf
+

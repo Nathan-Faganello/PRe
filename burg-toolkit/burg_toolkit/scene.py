@@ -4,8 +4,11 @@ import copy
 
 import numpy as np
 import open3d as o3d
+import trimesh
+import random as rd
 
 from . import mesh_processing
+from . import util
 
 
 class ObjectType:
@@ -256,3 +259,67 @@ class Scene:
         self.objects = objects or []
         self.bg_objects = bg_objects or []
         self.views = views or []
+
+    
+    """def on_bg_objects(object):
+        
+        check if the object relies on a bg_object
+        :object(objectInstance): object we want to check
+
+        :return (bool) True if it relies on a bg_object, False if not
+        
+
+        for bg_object in self.bg_objects:
+            if are_colliding_2(object, bg_object):
+                return True
+
+        return False """
+
+
+    def place_object_randomly(self,object):
+        """
+        place an object in a stable non-colliding pose in the scene
+        :object (objectInstance) : identifier of the objectType
+        :returns the (4,4) transformation matrix to place correctly the object
+        """
+        pose = select_stable_pose(object.mesh)
+
+        #we limit to a determined number of tries
+        nb_tries = 10
+
+        count = 0
+        while count < nb_tries :
+            #random translation in the x,y plan/rotation along the z axis
+
+            #problem : I need to find a way to have the possibles coordinates where to move the object
+            translation = np.eye(4)
+            translation_x = rd.uniform()
+            translation_y = rd.uniform()
+
+            #we create the random rotation
+            alpha = rd.uniform(0, 2*np.pi)
+            rotation = util.tf_rotation_from_angle(angle = alpha, axis = "z")
+
+            object.pose = rotation @ translation @ pose
+            #check if it's not in collision with other objects
+            obstacles = 0
+            if  not are_colliding_list(self.objects, object):
+                return True, object.pose
+            count +=1
+        
+        print(object.identifier, " wasn't placed in the scene")            
+        return False, np.eye(4)
+
+    
+    def generate_random(self):
+        """
+        Create a randomly arranged scene
+        :return True if it worked, False if not
+        """
+        for obj in self.objects :
+            succeed, obj.pose = self.place_object_randomly()
+            if not succeed :
+                print("An object couldn't be placed in the scene without collision")
+                return False
+
+        return True

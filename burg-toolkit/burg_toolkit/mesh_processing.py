@@ -1,8 +1,9 @@
 import numpy as np
 import trimesh
 import open3d as o3d
+import random as rd
 
-from . import util
+from burg_toolkit import util
 
 
 def check_properties(mesh):
@@ -100,3 +101,71 @@ def compute_mesh_inertia(o3d_mesh, mass):
     # trimesh meshes are density-based, so let's set density based on given mass and mesh volume
     mesh.density = mass / mesh.volume
     return mesh.moment_inertia, mesh.center_mass
+
+
+
+def select_stable_pose(mesh):
+    # among all the possible poses for the mesh, it returns the most probable
+    # mesh = the mesh for which we need to have the stable pose
+    tri = util.o3d_mesh_to_trimesh(mesh)
+    stable_poses, proba = trimesh.poses.compute_stable_poses(tri)
+    N = len(stable_poses)
+    proba_max = proba[0]
+    index_max = 0
+    for index in range (1,N):
+        if (proba[index]>proba_max):
+            proba_max = proba[index]
+            index_max = index 
+    return stable_poses[index_max]
+
+
+def select_random_stable_pose(mesh):
+    #select a pose among all the possible poses randomly
+    tri = util.o3d_mesh_to_trimesh(mesh)
+    stable_poses, proba = trimesh.poses.compute_stable_poses(tr)
+    N = len(stable_poses)
+    index = rd.randint(0,N-1)
+    return stable_poses[index]
+
+
+
+def are_colliding_2(object1, object2):
+    """
+    Check if 2 object meshes are in collision
+    :object1 (objectInstance) : first object we want to check
+    :object2 (objectInstance) : second object we want to check
+    :return (bool) : True if they are colliding, False if not
+    """
+
+    collision_manager = trimesh.collision.CollisionManager()
+    collision_manager.addObject(name = object1.identifier, mesh = object1.mesh, transform = object1.pose)
+    collision_manager.addObject(name = object2.identifier, mesh = object2.mesh, transform = object2.pose)
+
+    collision = collision_manager.in_collision_internal(return_names = False, return_data = False)
+
+    return collision
+
+def are_colliding_list(objects, obj1):
+    """
+    Check if several object meshes are in collision with another object
+    :objects (list of objectInstance) : objects we want to check
+    :return (bool) : True if they are colliding, False if not
+    """
+
+    collision_manager = trimesh.collision.CollisionManager()
+    collision_manager.addObject(name = obj1.identifier, mesh = obj1.mesh, transform = obj1.pose)
+
+    for obj in objects :
+        collision_manager.addObject(name = obj.identifier, mesh = obj.mesh, transform = obj.pose)
+
+    collision = collision_manager.in_collision_internal(return_names = False, return_data = False)
+
+    return collision
+
+
+    
+
+    
+
+
+     

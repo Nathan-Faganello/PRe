@@ -3,22 +3,7 @@ import configparser
 import numpy as np
 import burg_toolkit as burg
 import trimesh as tr
-
-
-
-def select_stable_pose(mesh):
-    # among all the possible poses for the mesh, it returns the most probable
-    # mesh = the mesh for which we need to have the stable pose
-    trimesh = burg.util.o3d_mesh_to_trimesh(mesh)
-    stable_poses, proba = tr.poses.compute_stable_poses(trimesh)
-    N = len(stable_poses)
-    proba_max = proba[0]
-    index_max = 0
-    for index in range (1,N):
-        if (proba[index]>proba_max):
-            proba_max = proba[index]
-            index_max = index 
-    return stable_poses[index_max]
+import random as rd
 
 
 def parse_args():
@@ -26,6 +11,7 @@ def parse_args():
     parser.add_argument('-c', '--config_fn', default='../config/config.cfg', type=str, metavar='FILE',
                         help='path to config file')
     return parser.parse_args()
+
 
 def training_demo(data_conf):
     reader = burg.io.BaseviMatlabScenesReader(data_conf)
@@ -135,9 +121,60 @@ def training_demo(data_conf):
     sim.dismiss()
 
 
+def multiple_sim(data_conf):
+    reader = burg.io.BaseviMatlabScenesReader(data_conf)
+
+    print('read object library')
+    object_library, index2name = reader.read_object_library()
+    object_library.yell()
+    
+    print('generating urdf files for object library')
+    object_library.generate_urdf_files('../data/tmp')
+
+    # 1-load the object we want to grab
+    target_object = object_library['foamBrick']
+    mesh = target_object.mesh
+    stable_pose = burg.mesh_processing.select_stable_pose(mesh)
+    target_object.make_urdf_file(directory = '../data/tmp')
+    objectInst = burg.scene.ObjectInstance(target_object, pose = stable_pose)
+
+    #2-load the gripper
+    gripper_model = burg.gripper.Robotiq2F85()
+    grasp_pose = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+    g = burg.grasp.Grasp()
+    g.pose = grasp_pose
+
+
+    #3 - starting from a basic position, creating a multitude of different grasp poses
+    nb_poses = 1000
+    grasp_set=np.array([])
+    pi = np.pi
+    interval = 0.01
+    for nPose in range(nb_poses):
+        pose = burg.util.tf_rotation_from_angle(rd.uniform(0, 2*pi),"z")@ burg.util.tf_rotation_from_angle(rd.uniform(-pi/2,pi/2),"y")@ burg.util.tf_rotation_from_angle(rd.uniform(-pi/2,pi/2),"x")
+        height = rd.randint(0,10)
+        pose = burg.util.tf_translation(interval * height, "z") @ pose
+        g = burg.grasp.Grasp()
+        g.pose = pose @ grasp_pose
+        grasp_set = np.append(grasp_set, g)
+    
+    sim = burg.sim.SingleObjectGraspSimulator(target_object = objectInst, gripper= gripper_model, verbose=True)
+    scores = sim.simulate_grasp_set(grasp_set)
+    sim.dismiss()
+
+    #np.savetxt() we want to save the scores and the grasps in a csv file for learning
+    
+    
+
 if __name__ == "__main__":
     arguments = parse_args()
     cfg = configparser.ConfigParser()
     # read config file and use the section that contains the data paths
     cfg.read(arguments.config_fn)
-    training_demo(cfg['General'])
+    #training_demo(cfg['General'])
+    multiple_sim(cfg['General'])
