@@ -134,6 +134,7 @@ def scene_creation(data_conf):
 
     sc = burg.scene.Scene(objects = finalObjects)
     burg.visualization.show_scene(sc, add_plane = True)
+    return scene
 
 
 def scene_creation_random(data_conf):
@@ -210,6 +211,8 @@ def scene_creation_random(data_conf):
     sc = burg.scene.Scene(objects = finalObjects)
     burg.visualization.show_scene(sc, add_plane = True)
 
+    return sc
+
 
 if __name__ == "__main__":
     arguments = parse_args()
@@ -217,4 +220,5 @@ if __name__ == "__main__":
     # read config file and use the section that contains the data paths
     cfg.read(arguments.config_fn)
     #training_demo(cfg['General'])
-    scene_creation_random(cfg['General'])
+    sc = scene_creation_random(cfg['General'])
+    

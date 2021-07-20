@@ -122,7 +122,7 @@ def select_stable_pose(mesh):
 def select_random_stable_pose(mesh):
     #select a pose among all the possible poses randomly
     tri = util.o3d_mesh_to_trimesh(mesh)
-    stable_poses, proba = trimesh.poses.compute_stable_poses(tr)
+    stable_poses, proba = trimesh.poses.compute_stable_poses(tri)
     N = len(stable_poses)
     index = rd.randint(0,N-1)
     return stable_poses[index]
