@@ -530,6 +530,8 @@ class SceneGraspSimulator(GraspSimulatorBase):
         self._bg_objects_ids = []
         self._objects_ids = []
 
+        self.LIFTING_HEIGHT = 0.1  # 10 cm
+
     def _prepare(self):
         self._p.setAdditionalSearchPath(pybullet_data.getDataPath())
         self._p.setGravity(0, 0, -9.81)
@@ -550,6 +552,29 @@ class SceneGraspSimulator(GraspSimulatorBase):
             else :
                 self._objects_ids[obj.object_type.identifier] = self._add_object(obj, fixed_base=False)
 
+    def _control_follower_joints(self):
+        master_id = 1
+        # todo: control followers depending on gripper object
+        master_joint_state = self._p.getJointState(self._body_ids['gripper'], master_id)[0]
+        self._p.setJointMotorControlArray(
+            self._body_ids['gripper'], [6, 3, 8, 5, 10], p.POSITION_CONTROL,
+            [master_joint_state, -master_joint_state, -master_joint_state, master_joint_state, master_joint_state],
+            positionGains=np.ones(5)
+        )
+
+    def _both_fingers_touch_object(self, link_finger_1, link_finger_2):
+        contact_1 = self._are_in_contact(
+            self._body_ids['gripper'], link_finger_1,
+            self._body_ids['target_object'], -1)
+
+        if not contact_1:
+            return False
+
+        contact_2 = self._are_in_contact(
+            self._body_ids['gripper'], link_finger_2,
+            self._body_ids['target_object'], -1)
+
+        return contact_2
     
     def _simulate_grasp(self, g):
         print('************** physics engine parameters **************')
@@ -560,6 +585,7 @@ class SceneGraspSimulator(GraspSimulatorBase):
         # PHASE 0: PLACING GRIPPER IN GRASP POSE
         # we have TCP grasp representation, hence need to transform gripper to TCP-oriented pose as well
         tf = np.matmul(g.pose, self.gripper.tf_base_to_TCP)
+        tf = np.matmul(self.target_object.pose, tf)
         grasp_pos, grasp_quat = util.position_and_quaternion_from_tf(tf, convention='pybullet')
         # load a dummy robot which we can move everywhere and connect the gripper to it
         self._body_ids['robot'], robot_joints = self._load_robot(

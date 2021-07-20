@@ -118,7 +118,7 @@ def select_stable_pose(mesh):
             index_max = index 
     return stable_poses[index_max]
 
-
+"""
 def select_random_stable_pose(mesh):
     #select a pose among all the possible poses randomly
     tri = util.o3d_mesh_to_trimesh(mesh)
@@ -126,12 +126,31 @@ def select_random_stable_pose(mesh):
     N = len(stable_poses)
     index = rd.randint(0,N-1)
     return stable_poses[index]
+"""
+
+def select_random_stable_pose(mesh):
+    """
+    Select a pose among stable poses
+    """
+    tri = util.o3d_mesh_to_trimesh(mesh)
+    stable_poses, proba = trimesh.poses.compute_stable_poses(tri)
+
+    stable_poses, proba = stable_poses[:32], proba[:32]
+    proba = [x * 100 for x in proba]
+    proba = [x / sum(proba) for x in proba]
+    index_list = [k for k in range(len(stable_poses))]
+
+    index_choosen = np.random.choice(index_list, p = proba)
+
+    stable_pose = stable_poses[index_choosen]
+
+    return stable_pose
 
 
 
 def are_colliding_2(object1, object2):
     """
-    Check if 2 object meshes are in collision
+    Check if 2 object meshes are in collision using python-fcl
     :object1 (objectInstance) : first object we want to check
     :object2 (objectInstance) : second object we want to check
     :return (bool) : True if they are colliding, False if not
@@ -147,7 +166,7 @@ def are_colliding_2(object1, object2):
 
 def are_colliding_list(objects, obj1):
     """
-    Check if several object meshes are in collision with another object
+    Check if several object meshes are in collision with another object using python-fcl
     :objects (list of objectInstance) : objects we want to check
     :return (bool) : True if they are colliding, False if not
     """
@@ -163,7 +182,48 @@ def are_colliding_list(objects, obj1):
     return collision
 
 
+def check_collision(object1, object2):
+    """
+    Check if 2 object meshes are in collision using AxisAlignedBoundingBoxes
+    :object1 (objectInstance) : first object we want to check
+    :object2 (objectInstance) : second object we want to check
+    :return (bool) : True if they are colliding, False if not
+    """
     
+    pc1 = poisson_disk_sampling(object1.object_type.mesh)
+    pc2 = poisson_disk_sampling(object2.object_type.mesh)
+
+    aabb1 = o3d.geometry.AxisAlignedBoundingBox.create_from_points(o3d.utility.Vector3dVector(pc1.points))
+    aabb2 = o3d.geometry.AxisAlignedBoundingBox.create_from_points(o3d.utility.Vector3dVector(pc2.points))
+
+    #bounds = [x, y, z]
+    max_bounds1 = aabb1.get_max_bound()
+    max_bounds2 = aabb2.get_max_bound()
+    min_bounds1 = aabb1.get_min_bound()
+    min_bounds2 = aabb2.get_min_bound()
+
+    #We can now check if it's colliding
+
+    colliding_x = False
+    colliding_y = False
+    colliding_z = False
+
+    # x_axis
+    if (min_bounds1[0]<=min_bounds2[0] and min_bounds2[0]<=max_bounds1[0]) or (min_bounds1[0]<=max_bounds2[0] and max_bounds2[0]<=max_bounds1[0]):
+        colliding_x = True
+    
+    # y_axis
+    if (min_bounds1[1]<=min_bounds2[1] and min_bounds2[1]<=max_bounds1[1]) or (min_bounds1[1]<=max_bounds2[1] and max_bounds2[1]<=max_bounds1[1]):
+        colliding_y = True
+    
+    # z_axis
+    if (min_bounds1[2]<=min_bounds2[2] and min_bounds2[2]<=max_bounds1[2]) or (min_bounds1[2]<=max_bounds2[2] and max_bounds2[2]<=max_bounds1[2]):
+        colliding_z = True
+
+    return colliding_x and colliding_z and colliding_y
+
+
+
 
     
 
