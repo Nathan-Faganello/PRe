@@ -24,6 +24,7 @@ def create_antipodal_grasp_set(object):
     gripper_model = burg.gripper.Robotiq2F85()
 
     ags = burg.sampling.AntipodalGraspSampler()
+    ags.only_grasp_from_above = True
     ags.mesh = object.object_type.mesh
     ags.gripper = gripper_model
     ags.n_orientations = 18
@@ -69,8 +70,9 @@ def sim_grasp_set_row(scene):
     successful_grasps = []
     for index in range(len(scores)):
         if scores[index] == 5:
-            successful_grasps += grasp_set[index]
+            successful_grasps += [grasp_set[index].as_grasp_set()]
 
+    print(len(successful_grasps))
     return successful_grasps
 
 

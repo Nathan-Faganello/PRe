@@ -234,31 +234,33 @@ def scene_creation_random(data_conf):
     print("You have selected all the objects. They are going to be placed randomly")
 
     finalObjects = []
-    for obj_name in obj_names:
-        target_object = object_library[obj_name]
-        mesh = target_object.mesh
-        stable_pose = burg.mesh_processing.select_random_stable_pose(mesh)
+    tries_lim = 10
+    tries = 0
+    while len(obj_names) != 0 and tries < 10 :
+        for index, obj_name in enumerate(obj_names):
+            target_object = object_library[obj_name]
+            mesh = target_object.mesh
+            stable_pose = burg.mesh_processing.select_random_stable_pose(mesh)
 
-        placed = False
-        tries = 0
-        while placed == False and tries < 10 :
-            x_transl = rd.uniform(-x_lim, x_lim)
-            y_transl = rd.uniform(-y_lim, y_lim)
-            transl_tf = burg.util.tf_translation(x_transl, "x") @ burg.util.tf_translation(y_transl, "y")
-            objectInst = burg.scene.ObjectInstance(target_object, pose = transl_tf @ stable_pose)
+            placed = False
+            while placed == False and tries < tries_lim :
+                x_transl = rd.uniform(-x_lim, x_lim)
+                y_transl = rd.uniform(-y_lim, y_lim)
+                transl_tf = burg.util.tf_translation(x_transl, "x") @ burg.util.tf_translation(y_transl, "y")
+                objectInst = burg.scene.ObjectInstance(target_object, pose = transl_tf @ stable_pose)
+                colliding = False
+                for obj in finalObjects:
+                    #if objectInst.object_type.mesh.is_intersecting(obj.object_type.mesh):
+                    if burg.mesh_processing.check_collision(obj, objectInst):
+                        colliding = True
 
-            colliding = False
-            for obj in finalObjects:
-                if burg.mesh_processing.check_collision(obj, objectInst):
-                    colliding = True
-            if colliding == False :
-                placed = True
-                finalObjects += [objectInst]
-            tries += 1
-            if tries == 10 :
-                print(obj_name, "can't be placed")
+                if colliding == False :
+                    placed = True
+                    finalObjects += [objectInst]
+                    obj_names.pop(index)
 
-            
+    if len(obj_names) != 0 :
+        print(obj_names, " can't be placed")
 
     # 2 - create and visualize the scene
 

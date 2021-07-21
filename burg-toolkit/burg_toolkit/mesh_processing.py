@@ -190,11 +190,14 @@ def check_collision(object1, object2):
     :return (bool) : True if they are colliding, False if not
     """
     
-    pc1 = poisson_disk_sampling(object1.object_type.mesh)
-    pc2 = poisson_disk_sampling(object2.object_type.mesh)
+    pc1 = poisson_disk_sampling(object1.object_type.mesh, init_factor=7)
+    pc2 = poisson_disk_sampling(object2.object_type.mesh, init_factor=7)
 
     aabb1 = o3d.geometry.AxisAlignedBoundingBox.create_from_points(o3d.utility.Vector3dVector(pc1.points))
     aabb2 = o3d.geometry.AxisAlignedBoundingBox.create_from_points(o3d.utility.Vector3dVector(pc2.points))
+
+    pose1 = object1.pose
+    pose2 = object2.pose
 
     #bounds = [x, y, z]
     max_bounds1 = aabb1.get_max_bound()
@@ -202,23 +205,31 @@ def check_collision(object1, object2):
     min_bounds1 = aabb1.get_min_bound()
     min_bounds2 = aabb2.get_min_bound()
 
+    #the meshes are not translated in space so we need to adjust coordinates based on the pose of the object in the scene
+    for axis in range(3):
+        max_bounds1[axis] += pose1[axis][2]
+        max_bounds1[axis] += pose2[axis][2]
+        min_bounds1[axis] += pose1[axis][2]
+        min_bounds2[axis] += pose2[axis][2]
+    
+
     #We can now check if it's colliding
 
-    colliding_x = False
-    colliding_y = False
-    colliding_z = False
+    colliding_x = True
+    colliding_y = True
+    colliding_z = True
 
     # x_axis
-    if (min_bounds1[0]<=min_bounds2[0] and min_bounds2[0]<=max_bounds1[0]) or (min_bounds1[0]<=max_bounds2[0] and max_bounds2[0]<=max_bounds1[0]):
-        colliding_x = True
+    if min_bounds2[0] > max_bounds1[0] or max_bounds2[0] < min_bounds1[0]:
+        colliding_x = False
     
     # y_axis
-    if (min_bounds1[1]<=min_bounds2[1] and min_bounds2[1]<=max_bounds1[1]) or (min_bounds1[1]<=max_bounds2[1] and max_bounds2[1]<=max_bounds1[1]):
-        colliding_y = True
+    if min_bounds2[1] > max_bounds1[1] or max_bounds2[1] < min_bounds1[1]:
+        colliding_y = False
     
-    # z_axis
-    if (min_bounds1[2]<=min_bounds2[2] and min_bounds2[2]<=max_bounds1[2]) or (min_bounds1[2]<=max_bounds2[2] and max_bounds2[2]<=max_bounds1[2]):
-        colliding_z = True
+    #z_axis
+    if min_bounds2[2] > max_bounds1[2] or max_bounds2[2] < min_bounds1[2]:
+        colliding_z = False
 
     return colliding_x and colliding_z and colliding_y
 
