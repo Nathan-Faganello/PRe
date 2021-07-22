@@ -585,7 +585,11 @@ class SceneGraspSimulator(GraspSimulatorBase):
         # PHASE 0: PLACING GRIPPER IN GRASP POSE
         # we have TCP grasp representation, hence need to transform gripper to TCP-oriented pose as well
         tf = np.matmul(g.pose, self.gripper.tf_base_to_TCP)
-        tf = np.matmul(self.target_object.pose, tf)
+        transl_tf = np.eye(4)
+        transl_tf[0, 3]=self.target_object.pose[0,3]
+        transl_tf[1, 3]=self.target_object.pose[1,3]
+        transl_tf[2, 3]=self.target_object.pose[2,3]
+        tf = np.matmul(transl_tf, tf)
         grasp_pos, grasp_quat = util.position_and_quaternion_from_tf(tf, convention='pybullet')
         # load a dummy robot which we can move everywhere and connect the gripper to it
         self._body_ids['robot'], robot_joints = self._load_robot(

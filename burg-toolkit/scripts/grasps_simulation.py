@@ -72,7 +72,6 @@ def sim_grasp_set_row(scene):
         if scores[index] == 5:
             successful_grasps += [grasp_set[index].as_grasp_set()]
 
-    print(len(successful_grasps))
     return successful_grasps
 
 

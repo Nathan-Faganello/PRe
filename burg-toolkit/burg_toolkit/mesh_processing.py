@@ -2,6 +2,7 @@ import numpy as np
 import trimesh
 import open3d as o3d
 import random as rd
+import copy
 
 from burg_toolkit import util
 
@@ -148,13 +149,13 @@ def select_random_stable_pose(mesh):
 
 
 
-def are_colliding_2(object1, object2):
-    """
+""" def are_colliding_2(object1, object2):
+
     Check if 2 object meshes are in collision using python-fcl
     :object1 (objectInstance) : first object we want to check
     :object2 (objectInstance) : second object we want to check
     :return (bool) : True if they are colliding, False if not
-    """
+
 
     collision_manager = trimesh.collision.CollisionManager()
     collision_manager.addObject(name = object1.identifier, mesh = object1.mesh, transform = object1.pose)
@@ -165,11 +166,10 @@ def are_colliding_2(object1, object2):
     return collision
 
 def are_colliding_list(objects, obj1):
-    """
+
     Check if several object meshes are in collision with another object using python-fcl
     :objects (list of objectInstance) : objects we want to check
     :return (bool) : True if they are colliding, False if not
-    """
 
     collision_manager = trimesh.collision.CollisionManager()
     collision_manager.addObject(name = obj1.identifier, mesh = obj1.mesh, transform = obj1.pose)
@@ -183,12 +183,11 @@ def are_colliding_list(objects, obj1):
 
 
 def check_collision(object1, object2):
-    """
+
     Check if 2 object meshes are in collision using AxisAlignedBoundingBoxes
     :object1 (objectInstance) : first object we want to check
     :object2 (objectInstance) : second object we want to check
     :return (bool) : True if they are colliding, False if not
-    """
     
     pc1 = poisson_disk_sampling(object1.object_type.mesh, init_factor=7)
     pc2 = poisson_disk_sampling(object2.object_type.mesh, init_factor=7)
@@ -231,11 +230,30 @@ def check_collision(object1, object2):
     if min_bounds2[2] > max_bounds1[2] or max_bounds2[2] < min_bounds1[2]:
         colliding_z = False
 
-    return colliding_x and colliding_z and colliding_y
+    return colliding_x and colliding_z and colliding_y """
 
+def check_collision(object1, object2):
 
+    """
+    Check if 2 object meshes are in collision using AxisAlignedBoundingBoxes
+    :object1 (objectInstance) : first object we want to check
+    :object2 (objectInstance) : second object we want to check
+    :return (bool) : True if they are colliding, False if not
+    """
 
+    # 1 - get the meshes
+    mesh1 = copy.copy(object1.object_type.mesh)
+    mesh2 = copy.copy(object2.object_type.mesh)
 
+    # 2 - transform the meshes
+    transl_vect1 = [object1.pose[0,3], object1.pose[1,3], object1.pose[2,3]]
+    transl_vect2 = [object2.pose[0,3], object2.pose[1,3], object2.pose[2,3]]
+
+    mesh1 = mesh1.translate(transl_vect1)
+    mesh2 = mesh2.translate(transl_vect2)
+
+    # 3 - check collisions
+    return mesh1.is_intersecting(mesh2)
     
 
 

@@ -250,7 +250,6 @@ def scene_creation_random(data_conf):
                 objectInst = burg.scene.ObjectInstance(target_object, pose = transl_tf @ stable_pose)
                 colliding = False
                 for obj in finalObjects:
-                    #if objectInst.object_type.mesh.is_intersecting(obj.object_type.mesh):
                     if burg.mesh_processing.check_collision(obj, objectInst):
                         colliding = True
 
@@ -258,6 +257,7 @@ def scene_creation_random(data_conf):
                     placed = True
                     finalObjects += [objectInst]
                     obj_names.pop(index)
+        tries += 1 
 
     if len(obj_names) != 0 :
         print(obj_names, " can't be placed")
