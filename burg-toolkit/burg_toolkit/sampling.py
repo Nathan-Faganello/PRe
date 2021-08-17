@@ -219,6 +219,7 @@ class AntipodalGraspSampler:
         # hence convert the mesh to trimesh
         self._trimesh = util.o3d_mesh_to_trimesh(self.mesh)
         intersector = trimesh.ray.ray_triangle.RayMeshIntersector(self._trimesh)
+        proximity = trimesh.proximity.ProximityQuery(self._trimesh)
 
         # we need to sample reference points from the mesh
         # since uniform sampling methods seem to go deterministically through the triangles and sample randomly within
@@ -243,6 +244,8 @@ class AntipodalGraspSampler:
 
         gs = grasp.GraspSet()
         gs_contacts = np.empty((0, 2, 3))
+        gs_approach_vectors = np.empty((0,2,3))
+        gs_normals = np.empty((0,2,3))
         i_ref_point = 0
 
         with tqdm(total=n, disable=not self.verbose) as progress_bar:
@@ -286,6 +289,8 @@ class AntipodalGraspSampler:
                     continue
 
                 normals = self._interpolated_vertex_normals(locations, index_tri)
+                _,_,index_tri_ref = proximity.on_surface([p_r])
+                normal_ref = self._interpolated_vertex_normals([p_r], index_tri_ref)
 
                 if self.verbose_debug:
                     # visualize candidate points and normals
@@ -318,6 +323,7 @@ class AntipodalGraspSampler:
                 d = (locations - p_r).reshape(-1, 3)
                 signs = np.zeros(len(d))
                 angles = util.angle(d, normals, sign_array=signs, as_degree=False)
+                angles_ref = util.angle(d, normal_ref, as_degree = False)
 
                 # exclude target points which do not have opposing surface orientations
                 # positive sign means vectors are facing into a similar direction as connecting vector, as expected
@@ -358,6 +364,9 @@ class AntipodalGraspSampler:
                     indices = np.arange(len(locations))
                     np.random.shuffle(indices)
                     locations = locations[indices[:self.max_targets_per_ref_point]]
+                    normals = normals[indices[:self.max_targets_per_ref_point]]
+                    angles = angles[indices[:self.max_targets_per_ref_point]]
+                    angles_ref = angles_ref[indices[:self.max_targets_per_ref_point]]
                 if self.verbose_debug:
                     print(f'* ... of which we randomly choose {len(locations)} to construct grasps')
 
@@ -372,13 +381,308 @@ class AntipodalGraspSampler:
                 contacts[:, 1] = locations
                 contacts = np.repeat(contacts, self.n_orientations, axis=0)
 
+
                 gs_contacts = np.concatenate([gs_contacts, contacts], axis=0)
                 gs.add(grasps)
                 if self.verbose_debug:
                     print(f'* added {len(grasps)} grasps (with {self.n_orientations} orientations for each point pair)')
                 progress_bar.update(len(grasps))
 
-        return gs, gs_contacts
+                #also compute the normals
+                final_normals = np.empty((len(locations),2,3))
+                final_normals[:,0]= normal_ref
+                final_normals[:,1]= normals
+                final_normals = np.repeat(final_normals, self.n_orientations, axis = 0)
+                gs_normals = np.concatenate([gs_normals, final_normals], axis = 0)
+
+                #also compute the angles
+                final_approach_vectors = np.empty((len(locations), 2, 3))
+                d1 = (locations - p_r).reshape(-1, 3)
+                final_approach_vectors[:,0] = d1
+                final_approach_vectors[:,1] = -d1
+                final_approach_vectors = np.repeat(final_approach_vectors, self.n_orientations, axis = 0)
+                gs_approach_vectors = np.concatenate([gs_approach_vectors, final_approach_vectors], axis = 0)
+
+
+        return gs, gs_contacts, gs_normals, gs_approach_vectors
+    
+    ###########################################################################################################################
+
+    def construct_noisy_grasp_set(self, ref_grasp, reference_point, target_points, n_orientations):
+        """
+        For all pairs of reference point and target point grasps will be constructed at the center point.
+        A grasp can be seen as a frame, the x-axis will point towards the target point and the z-axis will point
+        in the direction from which the gripper will be approaching.
+
+        :param reference_point: (3,) np array
+        :param target_points: (n, 3) np array
+        :param n_orientations: int, number of different orientations to use
+
+        :return: grasp.GraspSet
+        """
+        reference_point = np.reshape(reference_point, (1, 3))
+        target_points = np.reshape(target_points, (-1, 3))
+
+        # center points in the middle between ref and target, x-axis pointing towards target point
+        d = target_points - reference_point
+        center_points = reference_point + 1/2 * d
+        distances = np.linalg.norm(d, axis=-1)
+        x_axis = d / distances[:, np.newaxis]
+
+        # construct y-axis and z-axis orthogonal to x-axis
+        y_axis = np.zeros(x_axis.shape)
+        while (np.linalg.norm(y_axis, axis=-1) == 0).any():
+            tmp_vec = util.generate_random_unit_vector()
+            y_axis = np.cross(x_axis, tmp_vec)
+            # todo: using the same random unit vec to construct all frames will lead to very similar orientations
+            #       we might want to randomize this even more by using individual, random unit vectors
+        y_axis = y_axis / np.linalg.norm(y_axis, axis=-1)[:, np.newaxis]
+        z_axis = np.cross(x_axis, y_axis)
+        z_axis = z_axis / np.linalg.norm(z_axis, axis=-1)[:, np.newaxis]
+
+        # with all axes and the position, we can construct base frames
+        tf_basis = util.tf_from_xyz_pos(x_axis, y_axis, z_axis, center_points).reshape(-1, 4, 4)
+
+        # generate transforms for the n_orientations (rotation around x axis)
+        ref_theta = np.arccos(ref_grasp.pose[1,1])
+        eps = 0.2
+        theta = np.linspace(start = ref_theta - eps, stop = ref_theta + eps, num = n_orientations)
+        tf_rot = np.tile(np.eye(4), (n_orientations, 1, 1))
+        #print("n_orientations : ", n_orientations)
+        #print("tf_rot ", len(tf_rot[:,1,1]))
+        #print("theta ", len(theta))
+        tf_rot[:, 1, 1] = np.cos(theta)
+        tf_rot[:, 1, 2] = -np.sin(theta)
+        tf_rot[:, 2, 1] = np.sin(theta)
+        tf_rot[:, 2, 2] = np.cos(theta)
+
+        # apply transforms
+        tfs = np.matmul(tf_basis[np.newaxis, :, :, :], tf_rot[:, np.newaxis, :, :]).reshape(-1, 4, 4)
+        gs = grasp.GraspSet.from_poses(tfs)
+
+        # add distances as gripper widths (repeat n_orientation times)
+        gs.widths = np.tile(distances, n_orientations).reshape(n_orientations, len(distances)).T.reshape(-1)
+
+        return gs
+
+    def sample_noisy(self, ref_grasp, contact_point, n=10):
+
+        
+        # probably do some checks before starting... is gripper None? is mesh None? ...
+        if self.verbose:
+            print('preparing to sample grasps...')
+        # we need collision operations which are not available in o3d yet
+        # hence convert the mesh to trimesh
+        self._trimesh = util.o3d_mesh_to_trimesh(self.mesh)
+        intersector = trimesh.ray.ray_triangle.RayMeshIntersector(self._trimesh)
+        proximity = trimesh.proximity.ProximityQuery(self._trimesh)
+
+        # we need to sample reference points from the mesh
+        # since uniform sampling methods seem to go deterministically through the triangles and sample randomly within
+        # triangles, we cannot sample individual points (as this would get very similar points all the time).
+        # therefore, we first sample many points at once and then just use some of these at random
+        # let's have a wild guess of how many are many ...
+        n_sample = np.max([n, 1000, len(self.mesh.triangles)])
+        ref_points = util.o3d_pc_to_numpy(mesh_processing.poisson_disk_sampling(self.mesh, n_points=n_sample))
+        np.random.shuffle(ref_points)
+
+        #we want to have ref point only around the ref point of our grasp so we have to eliminate ref points which are too far
+        contact_point = np.array([contact_point[0], contact_point[1], contact_point[2]])
+        contact_point = np.repeat(contact_point, len(ref_points))
+        contact_point = np.reshape(contact_point, (len(ref_points),3))
+        distances = np.linalg.norm(ref_points[:,0:3] - contact_point , axis=-1)
+        mask_is_within_distance = (distances <= 0.1)
+        ref_points = ref_points[mask_is_within_distance]
+
+        while(len(ref_points)<n_sample):
+            ref_points_temp = util.o3d_pc_to_numpy(mesh_processing.poisson_disk_sampling(self.mesh, n_points=n_sample))
+            np.random.shuffle(ref_points)
+            distances = np.linalg.norm(ref_points - contact_point , axis=-1)
+            mask_is_within_distance = (distances <= 0.1)
+            ref_points_temp = ref_points[mask_is_within_distance]
+            ref_points = np.concatenate([ref_points, ref_points_temp])
+
+        if self.no_contact_below_z is not None:
+            keep = ref_points[:, 2] > self.no_contact_below_z
+            ref_points = ref_points[keep]
+
+        if self.verbose:
+            print(f'sampled {len(ref_points)} first contact point candidates, beginning to find grasps.')
+
+        # determine some parameters for casting rays in a friction cone
+        angle = np.arctan(self.mu)
+        if self.verbose_debug:
+            print('mu is', self.mu, 'hence angle of friction cone is', np.rad2deg(angle), '°')
+
+        gs = grasp.GraspSet()
+        gs_contacts = np.empty((0, 2, 3))
+        gs_approach_vectors = np.empty((0,2,3))
+        gs_normals = np.empty((0,2,3))
+        i_ref_point = 0
+
+        with tqdm(total=n, disable=not self.verbose) as progress_bar:
+            while len(gs) < n:
+                # todo check if ref point still in range
+                p_r = ref_points[i_ref_point, 0:3]
+                n_r = ref_points[i_ref_point, 3:6]
+                if self.verbose_debug:
+                    print(f'sampling ref point no {i_ref_point}: point {p_r}, normal {n_r}')
+                i_ref_point = (i_ref_point + 1) % len(ref_points)
+
+                # cast random rays from p_r within the friction cone to identify potential contact points
+                ray_directions = rays_within_cone(-n_r, angle, self.n_rays)
+                ray_origins = np.tile(p_r, (self.n_rays, 1))
+                locations, _, index_tri = intersector.intersects_location(
+                    ray_origins, ray_directions, multiple_hits=True)
+                if self.verbose_debug:
+                    print(f'* casting {self.n_rays} rays, leading to {len(locations)} intersection locations')
+                if len(locations) == 0:
+                    continue
+
+                # eliminate intersections with origin
+                mask_is_not_origin = ~np.isclose(locations, p_r, atol=1e-11).all(axis=-1)
+                locations = locations[mask_is_not_origin]
+                index_tri = index_tri[mask_is_not_origin]
+                if self.verbose_debug:
+                    print(f'* ... of which {len(locations)} are not with ref point')
+                if len(locations) == 0:
+                    continue
+
+                # eliminate contact points too far or too close
+                distances = np.linalg.norm(locations - p_r, axis=-1)
+                mask_is_within_distance = \
+                    (distances <= self.gripper.opening_width - self.width_tolerance)\
+                    | (distances >= self.min_grasp_width)
+                locations = locations[mask_is_within_distance]
+                index_tri = index_tri[mask_is_within_distance]
+                if self.verbose_debug:
+                    print(f'* ... of which {len(locations)} are within gripper width constraints')
+                if len(locations) == 0:
+                    continue
+
+                normals = self._interpolated_vertex_normals(locations, index_tri)
+                _,_,index_tri_ref = proximity.on_surface([p_r])
+                normal_ref = self._interpolated_vertex_normals([p_r], index_tri_ref)
+
+                if self.verbose_debug:
+                    # visualize candidate points and normals
+
+                    sphere_vis = o3d.geometry.TriangleMesh.create_sphere(radius=0.005)
+                    sphere_vis.translate(p_r)
+                    sphere_vis.compute_vertex_normals()
+
+                    o3d_pc = util.numpy_pc_to_o3d(np.concatenate([locations, normals], axis=1))
+                    obj_list = [self.mesh, sphere_vis, o3d_pc]
+                    arrow = o3d.geometry.TriangleMesh.create_arrow(
+                        cylinder_radius=1 / 10000,
+                        cone_radius=1.5 / 10000,
+                        cylinder_height=5.0 / 1000,
+                        cone_height=4.0 / 1000,
+                        resolution=20,
+                        cylinder_split=4,
+                        cone_split=1)
+                    arrow.compute_vertex_normals()
+                    for point, normal in zip(locations, normals):
+                        my_arrow = o3d.geometry.TriangleMesh(arrow)
+                        my_arrow.rotate(util.rotation_to_align_vectors([0, 0, 1], normal), center=[0, 0, 0])
+                        my_arrow.translate(point)
+                        obj_list.append(my_arrow)
+
+                    visualization.show_o3d_point_clouds(obj_list)
+                    # o3d.visualization.draw_geometries(obj_list, point_show_normal=True)
+
+                # compute angles to check antipodal constraints
+                d = (locations - p_r).reshape(-1, 3)
+                signs = np.zeros(len(d))
+                angles = util.angle(d, normals, sign_array=signs, as_degree=False)
+                angles_ref = util.angle(d, normal_ref, as_degree = False)
+
+                # exclude target points which do not have opposing surface orientations
+                # positive sign means vectors are facing into a similar direction as connecting vector, as expected
+                mask_faces_correct_direction = signs > 0
+                locations = locations[mask_faces_correct_direction]
+                normals = normals[mask_faces_correct_direction]
+                angles = angles[mask_faces_correct_direction]
+                if self.verbose_debug:
+                    print(f'* ... of which {len(locations)} are generally facing in opposing directions')
+                if len(locations) == 0:
+                    continue
+
+                # check friction cone constraint
+                mask_friction_cone = angles <= angle
+                locations = locations[mask_friction_cone]
+                normals = normals[mask_friction_cone]
+                angles = angles[mask_friction_cone]
+                if self.verbose_debug:
+                    print(f'* ... of which {len(locations)} are satisfying the friction constraint')
+                if len(locations) == 0:
+                    continue
+
+                # check below z contact
+                if self.no_contact_below_z is not None:
+                    mask_below_z = locations[:, 2] > self.no_contact_below_z
+                    locations = locations[mask_below_z]
+                    normals = normals[mask_below_z]
+                    angles = angles[mask_below_z]
+                    if self.verbose_debug:
+                        print(f'* ... of which {len(locations)} are above the specified z value')
+                    if len(locations) == 0:
+                        continue
+
+                # actually construct all the grasps (with n_orientations)
+                # todo: maybe we can choose more intelligently here
+                #       e.g. some farthest point sampling so grasps are likely to be more diverse
+                if len(locations) > self.max_targets_per_ref_point:
+                    indices = np.arange(len(locations))
+                    np.random.shuffle(indices)
+                    locations = locations[indices[:self.max_targets_per_ref_point]]
+                    normals = normals[indices[:self.max_targets_per_ref_point]]
+                    angles = angles[indices[:self.max_targets_per_ref_point]]
+                    angles_ref = angles_ref[indices[:self.max_targets_per_ref_point]]
+                if self.verbose_debug:
+                    print(f'* ... of which we randomly choose {len(locations)} to construct grasps')
+
+                """
+                if self.only_grasp_from_above:
+                    grasps = self.construct_halfspace_grasp_set(p_r, locations, self.n_orientations)
+                else:
+                    grasps = self.construct_grasp_set(p_r, locations, self.n_orientations)
+                """
+                grasps = self.construct_noisy_grasp_set(ref_grasp, p_r, locations, self.n_orientations)
+
+                # also compute the contact points
+                contacts = np.empty((len(locations), 2, 3))
+                contacts[:, 0] = p_r
+                contacts[:, 1] = locations
+                contacts = np.repeat(contacts, self.n_orientations, axis=0)
+
+
+                gs_contacts = np.concatenate([gs_contacts, contacts], axis=0)
+                gs.add(grasps)
+                if self.verbose_debug:
+                    print(f'* added {len(grasps)} grasps (with {self.n_orientations} orientations for each point pair)')
+                progress_bar.update(len(grasps))
+
+                #also compute the normals
+                final_normals = np.empty((len(locations),2,3))
+                final_normals[:,0]= normal_ref
+                final_normals[:,1]= normals
+                final_normals = np.repeat(final_normals, self.n_orientations, axis = 0)
+                gs_normals = np.concatenate([gs_normals, final_normals], axis = 0)
+
+                #also compute the approach vectors
+                final_approach_vectors = np.empty((len(locations), 2, 3))
+                d1 = (locations - p_r).reshape(-1, 3)
+                final_approach_vectors[:,0] = d1
+                final_approach_vectors[:,1] = -d1
+                final_approach_vectors = np.repeat(final_approach_vectors, self.n_orientations, axis = 0)
+                gs_approach_vectors = np.concatenate([gs_approach_vectors, final_approach_vectors], axis = 0)
+
+
+        return gs, gs_contacts, gs_normals, gs_approach_vectors
+
+    #################################################################################################################################
+
 
     def check_collisions(self, graspset, use_width=True, width_tolerance=0.01, additional_objects=None,
                          exclude_shape=False):

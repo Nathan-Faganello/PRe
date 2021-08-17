@@ -261,27 +261,13 @@ class Scene:
         self.views = views or []
 
     
-    """def on_bg_objects(object):
+
+    """ def place_object_randomly(self,object):
         
-        check if the object relies on a bg_object
-        :object(objectInstance): object we want to check
-
-        :return (bool) True if it relies on a bg_object, False if not
-        
-
-        for bg_object in self.bg_objects:
-            if are_colliding_2(object, bg_object):
-                return True
-
-        return False """
-
-
-    def place_object_randomly(self,object):
-        """
         place an object in a stable non-colliding pose in the scene
         :object (objectInstance) : identifier of the objectType
         :returns the (4,4) transformation matrix to place correctly the object
-        """
+        
         pose = select_stable_pose(object.mesh)
 
         #we limit to a determined number of tries
@@ -312,14 +298,14 @@ class Scene:
 
     
     def generate_random(self):
-        """
+        
         Create a randomly arranged scene
         :return True if it worked, False if not
-        """
+        
         for obj in self.objects :
             succeed, obj.pose = self.place_object_randomly()
             if not succeed :
                 print("An object couldn't be placed in the scene without collision")
                 return False
 
-        return True
+        return True """

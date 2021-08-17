@@ -246,6 +246,10 @@ def scene_creation_random(data_conf):
             while placed == False and tries < tries_lim :
                 x_transl = rd.uniform(-x_lim, x_lim)
                 y_transl = rd.uniform(-y_lim, y_lim)
+
+                #x_transl = rd.gauss(0, 0.1)
+                #y_transl = rd.gauss(0, 0.1)
+
                 transl_tf = burg.util.tf_translation(x_transl, "x") @ burg.util.tf_translation(y_transl, "y")
                 objectInst = burg.scene.ObjectInstance(target_object, pose = transl_tf @ stable_pose)
                 colliding = False

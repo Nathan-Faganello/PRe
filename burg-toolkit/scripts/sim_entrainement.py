@@ -12,6 +12,28 @@ def parse_args():
                         help='path to config file')
     return parser.parse_args()
 
+def create_antipodal_grasp_set(object):
+    """
+    Create a grasp set for a given object
+    :object : (objectInstance) object you want to grab
+    :return a grasp set (graspSet) 
+    """
+    gripper_model = burg.gripper.Robotiq2F85()
+
+    ags = burg.sampling.AntipodalGraspSampler()
+    ags.only_grasp_from_above = True
+    ags.mesh = object.object_type.mesh
+    ags.gripper = gripper_model
+    ags.n_orientations = 18
+    ags.verbose = True
+    ags.max_targets_per_ref_point = 2
+    graspset, contacts = ags.sample(100)
+    # gs.scores = ags.check_collisions(gs, use_width=False)  # need to install python-fcl
+    print('contacts.shape', contacts.shape)
+    burg.visualization.show_grasp_set([ags.mesh], graspset, gripper=gripper_model, use_width=False,
+                                      score_color_func=lambda s: [s, 1-s, 0], with_plane=True)
+
+    return graspset
 
 def training_demo(data_conf):
     reader = burg.io.BaseviMatlabScenesReader(data_conf)
@@ -151,7 +173,7 @@ def multiple_sim(data_conf):
 
 
     #3 - starting from a basic position, creating a multitude of different grasp poses
-    nb_poses = 1000
+    """ nb_poses = 1000
     grasp_set=np.array([])
     pi = np.pi
     interval = 0.01
@@ -161,7 +183,9 @@ def multiple_sim(data_conf):
         pose = burg.util.tf_translation(interval * height, "z") @ pose
         g = burg.grasp.Grasp()
         g.pose = pose @ grasp_pose
-        grasp_set = np.append(grasp_set, g)
+        grasp_set = np.append(grasp_set, g) """
+    
+    grasp_set = create_antipodal_grasp_set(objectInst)
     
     sim = burg.sim.SingleObjectGraspSimulator(target_object = objectInst, gripper= gripper_model, verbose=True)
     scores = sim.simulate_grasp_set(grasp_set)
